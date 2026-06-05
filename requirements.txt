@@ -1,0 +1,30 @@
+tqdm
+
+# notebooks
+ipython
+ipykernel
+ipywidgets
+
+# computation
+numpy
+pandas
+pyarrow  # parquet engine
+
+# models
+torch
+torchaudio
+torchvision
+torchcodec
+transformers
+
+# flask api
+flask
+flask_injector
+flask_cors
+flask_restful
+flask_httpauth
+cattrs
+werkzeug
+attrs
+injector
+python-dateutil
