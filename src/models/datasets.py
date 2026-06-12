@@ -1,5 +1,6 @@
 import os
 import pandas as pd
+import scipy.io as scio
 import torch
 
 from torch.utils.data import Dataset
@@ -66,6 +67,7 @@ class MSSNSDataset:
         mssnsd_root: str | None = None,
         sample_strat: Literal["type", "cate", None] = "type",
         *,
+        preprocessor: Callable | None = None,
         generator: torch.Generator | None = None
     ) -> None:
         if mssnsd_root is None:
@@ -75,7 +77,7 @@ class MSSNSDataset:
         files = ([f"{dir}/{file}" for file in os.listdir(dir)] for dir in noise_dir)
         audio_files = _filter_audio_files(sum(files, start = []))
 
-        self._dataset = AudioDataset(audio_files)
+        self._dataset = AudioDataset(audio_files, preprocessor)
         self._noise_weights = self._create_nosie_weights(audio_files, sample_strat)
 
         self._generator = generator
@@ -107,6 +109,9 @@ class MSSNSDataset:
 
         return 1 / torch.tensor(weights)
 
+    def __len__(self) -> int:
+        return len(self._dataset)
+
     def _match_length(self, waveform, target_len):
         len_diff = waveform.shape[-1] - target_len
         if len_diff > 0:
@@ -134,3 +139,35 @@ class MSSNSDataset:
             ],
             dim=0
         )
+
+
+class FLAIRDataset:
+    def __init__(
+        self,
+        flair_mat: str | None = None,
+        preprocessor: Callable | None = None,
+        *,
+        generator: torch.Generator | None = None
+    ) -> None:
+        if flair_mat is None:
+            flair_mat = f"{_ROOT}/data/data_FLAIR.mat"
+
+        data = scio.loadmat(flair_mat)
+
+        self._sample_rate = data["fs"][0, 0]
+        self._rirs = torch.tensor(data["rirs"].transpose([1, 2, 0])).mean(dim=1, keepdim=True)
+
+        self._preprocessor = preprocessor if preprocessor else lambda x: x
+        self._generator = generator
+
+    def __len__(self) -> int:
+        return self._rirs.shape[0]
+
+    def get_samples(self, num_samples: int):
+        sample_indices = torch.randint(
+            len(self),
+            size=(num_samples,),
+            generator=self._generator
+        )
+
+        return self._rirs[sample_indices]
