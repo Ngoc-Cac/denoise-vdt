@@ -19,20 +19,19 @@ def _filter_audio_files(files: list[str]):
         files
     ))
 
+
 class AudioDataset(Dataset):
     def __init__(
         self,
         files: list[str],
-        preprocessor: Callable | None = None,
+        preprocessor: Callable[[torch.Tensor, int], torch.Tensor] | None = None,
         *,
         sample_rate: int | None = None,
-        pad: bool = False,
-        seed: Any = None
+        pad_max: bool = False
     ) -> None:
         super().__init__()
 
-        self._preprocessor = preprocessor if preprocessor else lambda x: x
-        self._pad = pad
+        self._preprocessor = preprocessor if preprocessor else lambda wf, _: wf
 
         self._decoders = [
             AudioDecoder(file, sample_rate=sample_rate)
@@ -42,7 +41,7 @@ class AudioDataset(Dataset):
         self._max_len = max(
             int(d.metadata.duration_seconds * d.metadata.sample_rate)
             for d in self._decoders
-        )
+        ) if pad_max else None
 
     def __len__(self):
         return len(self._decoders)
@@ -50,13 +49,16 @@ class AudioDataset(Dataset):
     def __getitem__(self, index: int) -> torch.Tensor:
         if self._cache[index] is None:
             waveform = self._decoders[index].get_all_samples().data
-            if self._pad and waveform.shape[-1] < self._max_len:
+            if self._max_len and waveform.shape[-1] < self._max_len:
                 waveform = torch.nn.functional.pad(
                     waveform,
                     (0, self._max_len - waveform.shape[-1])
                 )
 
-            self._cache[index] = self._preprocessor(waveform)
+            self._cache[index] = self._preprocessor(
+                waveform,
+                self._decoders[index].metadata.sample_rate
+            )
 
         return self._cache[index]
 
@@ -67,7 +69,7 @@ class MSSNSDataset:
         mssnsd_root: str | None = None,
         sample_strat: Literal["type", "cate", None] = "type",
         *,
-        preprocessor: Callable | None = None,
+        preprocessor: Callable[[torch.Tensor, int], torch.Tensor] | None = None,
         generator: torch.Generator | None = None
     ) -> None:
         if mssnsd_root is None:
@@ -128,9 +130,6 @@ class MSSNSDataset:
             True,
             generator=self._generator
         )
-        # sample_indices = torch.randint(
-        #     len(self._dataset), size=(num_samples,), generator=self._generator
-        # )
 
         return torch.stack(
             [
@@ -145,7 +144,7 @@ class FLAIRDataset:
     def __init__(
         self,
         flair_mat: str | None = None,
-        preprocessor: Callable | None = None,
+        preprocessor: Callable[[torch.Tensor, int], torch.Tensor] | None = None,
         *,
         generator: torch.Generator | None = None
     ) -> None:
@@ -157,7 +156,7 @@ class FLAIRDataset:
         self._sample_rate = data["fs"][0, 0]
         self._rirs = torch.tensor(data["rirs"].transpose([1, 2, 0])).mean(dim=1, keepdim=True)
 
-        self._preprocessor = preprocessor if preprocessor else lambda x: x
+        self._preprocessor = preprocessor if preprocessor else lambda wf, _: wf
         self._generator = generator
 
     def __len__(self) -> int:
@@ -170,4 +169,4 @@ class FLAIRDataset:
             generator=self._generator
         )
 
-        return self._rirs[sample_indices]
+        return self._preprocessor(self._rirs[sample_indices], self._sample_rate)
