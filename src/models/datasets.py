@@ -43,7 +43,13 @@ class AudioDataset(Dataset):
             for d in self._decoders
         ) if pad_max else None
 
-    def __len__(self):
+    @staticmethod
+    def collate_fn(batch: list[torch.Tensor]):
+        # lengths = torch.tensor([sig.shape[-1] for sig in batch])
+        padded_signals = torch.nested.nested_tensor(batch).to_padded_tensor(0)
+        return padded_signals
+
+    def __len__(self) -> int:
         return len(self._decoders)
 
     def __getitem__(self, index: int) -> torch.Tensor:
