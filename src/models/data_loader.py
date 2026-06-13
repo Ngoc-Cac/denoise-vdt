@@ -60,7 +60,8 @@ class NoiseAugmentLoader:
         )[..., :samples.shape[-1]].type_as(samples)
 
     def __iter__(self):
-        for samples in self._data_loader:
+        for batch in self._data_loader:
+            samples, *other = batch if isinstance(batch, tuple) else (batch, ())
             batch_size = samples.shape[0]
 
             snr_mask = torch.bernoulli(
@@ -81,4 +82,5 @@ class NoiseAugmentLoader:
                 "snr_mask": snr_mask,
                 "snr_levels": self._snr_levels[level_indices]
             }
-            yield samples, noise_dict, noisy_samples
+
+            yield samples, noisy_samples, noise_dict, *other
