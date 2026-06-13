@@ -17,6 +17,8 @@ torchvision
 torchcodec
 transformers
 
+datasets
+
 # flask api
 flask
 flask_injector

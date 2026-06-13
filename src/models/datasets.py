@@ -3,6 +3,7 @@ import pandas as pd
 import scipy.io as scio
 import torch
 
+from datasets import load_dataset
 from torch.utils.data import Dataset
 from torchcodec.decoders import AudioDecoder
 
@@ -67,6 +68,58 @@ class AudioDataset(Dataset):
             )
 
         return self._cache[index]
+
+
+class ViSpeechDataset:
+    _SUPPORTED_DATASETS = (
+        "doof-ferb/vlsp2020_vinai_100h", "doof-ferb/fpt_fosd"
+    )
+
+    def __init__(
+        self,
+        url: Literal["doof-ferb/vlsp2020_vinai_100h", "doof-ferb/fpt_fosd"],
+        preprocessor: Callable[[torch.Tensor, int], torch.Tensor] | None = None,
+        *,
+        split: str = "train",
+        streaming: bool = False
+    ):
+        if url not in self._SUPPORTED_DATASETS:
+            raise ValueError(f"Unsupported dataset {url}")
+
+        self._dataset = load_dataset(
+            url,
+            split=split,
+            streaming=streaming
+        )
+
+        if preprocessor is None:
+            preprocessor = lambda wf, _: wf
+
+        def process(batch: dict):
+            return {
+                "audio": [
+                    preprocessor(
+                        decoder.get_all_samples().data,
+                        decoder.metadata.sample_rate
+                    )
+                    for decoder in batch['audio']
+                ],
+                "transcription": batch['transcription']
+            }
+        self._dataset.set_transform(process)
+
+    @staticmethod
+    def collate_fn(batch: list[dict]):
+        audio = [item['audio'] for item in batch]
+        transcripts = [item['transcription'] for item in batch]
+
+        return AudioDataset.collate_fn(audio), transcripts
+
+    def __len__(self):
+        return len(self._dataset)
+
+    def __getitem__(self, index: int) -> torch.Tensor:
+        return self._dataset[index]
 
 
 class MSSNSDataset:
