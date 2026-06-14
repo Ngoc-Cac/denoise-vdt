@@ -1,7 +1,6 @@
 import torch
 
 from torchcodec.decoders import AudioDecoder
-from injector import inject
 
 from ...logger import get_logger
 
@@ -20,6 +19,6 @@ class DenoiseService:
         sr = samples.sample_rate
 
         with torch.no_grad():
-            denoised = self._model(samples.data)
+            denoised, output_sr = self._model(samples.data, sr)
 
-        return denoised, sr
+        return denoised.cpu(), output_sr

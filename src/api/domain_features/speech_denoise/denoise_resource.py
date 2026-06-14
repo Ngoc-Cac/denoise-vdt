@@ -21,14 +21,14 @@ class DenoiseResource(Resource):
     Generic tempalte for API Resource.
     """
     @inject
-    def __init__(self, template_service: DenoiseService):
+    def __init__(self, denoise_service: DenoiseService):
         """
         Initialize the resource with dependency-injected service.
 
         :param TemplateService template_service: The service to use for
             handling requests
         """
-        self.denoise_service = template_service
+        self.service = denoise_service
 
         self.reqparse = reqparse.RequestParser()
         self.reqparse.add_argument(
@@ -71,12 +71,12 @@ class DenoiseResource(Resource):
         try:
             filepath = self._save_file(args['audio'])
 
-            denoised, sr = self.denoise_service.denoise_audio(filepath)
+            denoised, sr = self.service.denoise_audio(filepath)
             return send_file(
                 self._audio_to_bytes(denoised, sr),
                 "audio/wav",
                 download_name="cleaned.wav"
             )
         except Exception as e:
-            logger.error(f"Error: {e}")
+            logger.error(f"Error: {e}", exc_info=True)
             return {"success": False, "error": str(e)}, 500
