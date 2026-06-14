@@ -17,17 +17,9 @@ logger = get_logger(__name__)
 
 
 class DenoiseResource(Resource):
-    """
-    Generic tempalte for API Resource.
-    """
+    """Resource for hosting the denoising endpoint."""
     @inject
     def __init__(self, denoise_service: DenoiseService):
-        """
-        Initialize the resource with dependency-injected service.
-
-        :param TemplateService template_service: The service to use for
-            handling requests
-        """
         self.service = denoise_service
 
         self.reqparse = reqparse.RequestParser()
@@ -60,12 +52,6 @@ class DenoiseResource(Resource):
         return filepath
 
     def post(self):
-        """
-        Handle POST request.
-
-        :return: A JSON response with HTTP status code
-        :rtype: tuple[dict, int]
-        """
         args = self.reqparse.parse_args()
 
         try:
