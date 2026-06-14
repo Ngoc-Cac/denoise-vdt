@@ -10,8 +10,7 @@ class NoiseAugmentLoader:
     def __init__(
         self,
         data_loader: DataLoader,
-        snr_levels: list[int | float],
-        snr_dataset: MSSNSDataset | None = None,
+        snr_dataset: MSSNSDataset,
         rir_dataset: FLAIRDataset | None = None,
         snr_prob: float | None = None,
     ) -> None:
@@ -22,10 +21,7 @@ class NoiseAugmentLoader:
         self._generator = data_loader.generator
         self.batch_size = self._data_loader.batch_size
 
-        self._snr_dataset = (
-            MSSNSDataset(generator=self._generator)
-            if snr_dataset is None else snr_dataset
-        )
+        self._snr_dataset = snr_dataset
         self._rir_dataset = (
             FLAIRDataset(generator=self._generator)
             if rir_dataset is None else rir_dataset
@@ -35,22 +31,16 @@ class NoiseAugmentLoader:
             if snr_prob is None else snr_prob
         )
 
-        self._snr_levels = torch.tensor(snr_levels)
-
     def _apply_snr_noise(self, samples, snr_mask):
-        snr_noises = self._snr_dataset.get_samples(
+        snr_noises, snr_levels = self._snr_dataset.get_samples(
             snr_mask.sum(), samples.shape[-1]
         )
-        snr_indices = torch.randint(
-            len(self._snr_levels),
-            size=(snr_noises.shape[0],),
-            generator=self._generator
-        )
+
         # reshape (B, 1) to match shape (B, ..., T) of the waveforms
         target_shape = [snr_noises.shape[0]] + list(samples.shape[1:-1])
-        return snr_noises, snr_indices, F.add_noise(
+        return snr_noises, snr_levels, F.add_noise(
             samples[snr_mask], snr_noises,
-            self._snr_levels[snr_indices].view(target_shape)
+            snr_levels.view(target_shape)
         ).type_as(samples)
 
     def _apply_rir_noise(self, samples, rir_mask):
@@ -58,6 +48,9 @@ class NoiseAugmentLoader:
         return rir_samples, F.fftconvolve(
             samples[rir_mask], rir_samples
         )[..., :samples.shape[-1]].type_as(samples)
+
+    def __len__(self):
+        return len(self._data_loader)
 
     def __iter__(self):
         for batch in self._data_loader:
@@ -70,7 +63,7 @@ class NoiseAugmentLoader:
             ).bool()
             noisy_samples = torch.empty(samples.shape, dtype=samples.dtype)
 
-            snr_noises, level_indices, noisy = self._apply_snr_noise(samples, snr_mask)
+            snr_noises, snr_levels, noisy = self._apply_snr_noise(samples, snr_mask)
             noisy_samples[snr_mask] = noisy
 
             rir_samples, noisy = self._apply_rir_noise(samples, ~snr_mask)
@@ -80,7 +73,7 @@ class NoiseAugmentLoader:
                 "snr": snr_noises,
                 "rir": rir_samples,
                 "snr_mask": snr_mask,
-                "snr_levels": self._snr_levels[level_indices]
+                "snr_levels": snr_levels
             }
 
             yield samples, noisy_samples, noise_dict, *other

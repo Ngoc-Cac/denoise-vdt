@@ -125,6 +125,7 @@ class ViSpeechDataset:
 class MSSNSDataset:
     def __init__(
         self,
+        snr_levels: list[int | float],
         mssnsd_root: str | None = None,
         sample_strat: Literal["type", "cate", None] = "type",
         *,
@@ -140,6 +141,8 @@ class MSSNSDataset:
 
         self._dataset = AudioDataset(audio_files, preprocessor)
         self._noise_weights = self._create_nosie_weights(audio_files, sample_strat)
+
+        self._snr_levels = torch.tensor(snr_levels)
 
         self._generator = generator
 
@@ -189,6 +192,11 @@ class MSSNSDataset:
             True,
             generator=self._generator
         )
+        snr_indices = torch.randint(
+            len(self._snr_levels),
+            size=(num_samples,),
+            generator=self._generator
+        )
 
         return torch.stack(
             [
@@ -196,7 +204,7 @@ class MSSNSDataset:
                 for idx in sample_indices
             ],
             dim=0
-        )
+        ), self._snr_levels[snr_indices]
 
 
 class FLAIRDataset:
