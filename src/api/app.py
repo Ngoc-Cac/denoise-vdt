@@ -3,31 +3,24 @@ import logging.config
 import sys
 from os import environ
 
-import flask_restful
 from flask import Flask, jsonify
 from flask_cors import CORS
 from flask_injector import FlaskInjector
-from flask_restful import output_json
+from flask_restful import output_json, Api
 from werkzeug.exceptions import default_exceptions, HTTPException
 
 from .core_features.exception.request import ValidationError
-from .core_features.infrastructure.modules import create_modules
+from .core_features.infrastructure import AppModule, ModelModule
+
+from .domain_features import (
+    HealthResource,
+    DenoiseResource,
+    TranscribeResource,
+)
 
 from .logger import get_logger
 
-from .domain_features.health.health_resource import HealthResource
-from .domain_features.speech_denoise.denoise_resource import DenoiseResource
-
-
 logger = get_logger(__name__)
-
-
-class Api(flask_restful.Api):
-    def __init__(self, *args, **kwargs):
-        super(Api, self).__init__(*args, **kwargs)
-        self.representations = {
-            "application/json": output_json
-        }
 
 
 def _setup_json_error_handling(app: Flask):
@@ -58,14 +51,23 @@ def _setup_json_error_handling(app: Flask):
     return app
 
 
+def _setup_api(app: Flask):
+    api = Api(app, catch_all_404s=True)
+    api.representation({"application/json": output_json})
+    # API routes
+    api.add_resource(HealthResource, "/health", "/api/v1/health")
+    api.add_resource(DenoiseResource, "/denoise", "/api/v1/denoise")
+    api.add_resource(TranscribeResource, "/transcribe", "/api/v1/transcribe")
+
+    return api
+
+
 def create_app(modules=None):
     logger.info("Creating application")
 
     app = Flask(__name__)
     app.config["PROPAGATE_EXCEPTIONS"] = True
-    logger.info("Flask App ready")
-
-    api = Api(app, catch_all_404s=True)
+    logger.info("Flask App initialised")
 
     with app.app_context():
         app.logger.addHandler(logging.StreamHandler(stream=sys.stdout))
@@ -73,23 +75,22 @@ def create_app(modules=None):
 
     app = _setup_json_error_handling(app)
 
-    # API routes
-    api.add_resource(HealthResource, "/health", "/api/v1/health")
-    api.add_resource(DenoiseResource, "/denoise", "/api/v1/denoise")
+    api = _setup_api(app)
 
     logger.info("API Configured")
 
     if not modules:
-        modules = create_modules()
+        modules = [
+            AppModule(),
+            ModelModule(),
+        ]
 
     app.injector = FlaskInjector(app=app, modules=modules).injector
 
-    cors = CORS(resources={
-        r"/api/*": {"origins": "*"},
-    })
+    cors = CORS(resources={r"/api/*": {"origins": "*"}})
     cors.init_app(app)
 
     logger.info("API has fully started!")
-    logger.debug("Current env %s", environ)
+    # logger.debug("Current env %s", environ)
 
     return app
