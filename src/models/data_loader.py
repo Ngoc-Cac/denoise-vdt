@@ -47,10 +47,17 @@ class NoiseAugmentLoader:
             snr_levels.view(target_shape)
         ).type_as(samples)
 
-    def _apply_rir_noise(self, samples, rir_mask):
+    def _apply_rir_noise(
+        self,
+        samples: torch.Tensor,
+        rir_mask,
+        eps: float = 1e-7
+    ):
         rir_samples = self._rir_dataset.get_samples(rir_mask.sum())
-        return rir_samples, F.fftconvolve(
-            samples[rir_mask], rir_samples
+        samples = samples[rir_mask]
+
+        noisy = F.fftconvolve(
+            samples, rir_samples
         )[..., :samples.shape[-1]].type_as(samples)
 
         dims = tuple(range(1, samples.ndim))
