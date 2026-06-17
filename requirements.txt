@@ -10,12 +10,14 @@ numpy
 pandas
 pyarrow  # parquet engine
 
-# models
+# models and domain-specific dependencies
 torch
 torchaudio
 torchvision
 torchcodec
+
 transformers
+underthesea
 
 datasets
 
