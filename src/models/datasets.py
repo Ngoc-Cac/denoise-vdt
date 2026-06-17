@@ -7,7 +7,7 @@ from datasets import load_dataset
 from torch.utils.data import Dataset
 from torchcodec.decoders import AudioDecoder
 
-from typing import Any, Callable, Literal
+from typing import Callable, Literal
 
 
 _SUPPORTED_EXTS = (".wav", ".ogg", ".mp3")
@@ -81,16 +81,12 @@ class ViSpeechDataset:
         preprocessor: Callable[[torch.Tensor, int], torch.Tensor] | None = None,
         *,
         split: str = "train",
-        streaming: bool = False
+        **kwargs
     ):
         if url not in self._SUPPORTED_DATASETS:
             raise ValueError(f"Unsupported dataset {url}")
 
-        self._dataset = load_dataset(
-            url,
-            split=split,
-            streaming=streaming
-        )
+        self._dataset = load_dataset(url, split=split, **kwargs)
 
         if preprocessor is None:
             preprocessor = lambda wf, _: wf
