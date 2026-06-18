@@ -12,13 +12,10 @@ class NoiseAugmentLoader:
         data_loader: DataLoader,
         snr_dataset: MSSNSDataset,
         rir_dataset: FLAIRDataset | None = None,
-        snr_prob: float | None = None,
+        noise_weights: list | None = None,
         *,
         resample: bool = True
     ) -> None:
-        if snr_prob is not None and not 0 < snr_prob < 1:
-            raise ValueError("snr_prob must be between 0 and 1")
-
         self._data_loader = data_loader
         self._generator = data_loader.generator
         self.batch_size = self._data_loader.batch_size
@@ -28,9 +25,9 @@ class NoiseAugmentLoader:
             FLAIRDataset(generator=self._generator)
             if rir_dataset is None else rir_dataset
         )
-        self._snr_prob = (
-            len(self._snr_dataset) / (len(self._rir_dataset) + len(self._snr_dataset))
-            if snr_prob is None else snr_prob
+        self._noise_weights = (
+            torch.ones(3) if noise_weights is None else
+            torch.tensor(noise_weights)
         )
 
         self._cache = None if resample else [None] * len(self._data_loader)
@@ -70,22 +67,27 @@ class NoiseAugmentLoader:
         samples, *other = batch if isinstance(batch, tuple) else (batch, ())
         batch_size = samples.shape[0]
 
-        snr_mask = torch.bernoulli(
-            torch.full((batch_size,), self._snr_prob),
+        # 0: rir | 1: snr | 2: both
+        noise_mask = torch.multinomial(
+            self._noise_weights,
+            num_samples=batch_size,
+            replacement=True,
             generator=self._generator
-        ).bool()
-        noisy_samples = torch.empty(samples.shape, dtype=samples.dtype)
+        )
+        noisy_samples = samples.clone()
 
-        snr_noises, snr_levels, noisy = self._apply_snr_noise(samples, snr_mask)
+        rir_mask = (noise_mask == 0) | (noise_mask == 2)
+        rir_samples, noisy = self._apply_rir_noise(noisy_samples, rir_mask)
+        noisy_samples[rir_mask] = noisy
+
+        snr_mask = (noise_mask == 1) | (noise_mask == 2)
+        snr_noises, snr_levels, noisy = self._apply_snr_noise(noisy_samples, snr_mask)
         noisy_samples[snr_mask] = noisy
-
-        rir_samples, noisy = self._apply_rir_noise(samples, ~snr_mask)
-        noisy_samples[~snr_mask] = noisy
 
         noise_dict = {
             "snr": snr_noises,
             "rir": rir_samples,
-            "snr_mask": snr_mask,
+            "noise_mask": noise_mask,
             "snr_levels": snr_levels
         }
 
