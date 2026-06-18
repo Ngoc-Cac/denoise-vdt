@@ -1,9 +1,9 @@
 import os
 import pandas as pd
 import scipy.io as scio
+import datasets
 import torch
 
-from datasets import load_dataset
 from torch.utils.data import Dataset
 from torchcodec.decoders import AudioDecoder
 
@@ -70,23 +70,30 @@ class AudioDataset(Dataset):
         return self._cache[index]
 
 
-class ViSpeechDataset:
+class SpeechTranscriptDataset:
     _SUPPORTED_DATASETS = (
         "doof-ferb/vlsp2020_vinai_100h", "doof-ferb/fpt_fosd"
     )
 
     def __init__(
         self,
-        url: Literal["doof-ferb/vlsp2020_vinai_100h", "doof-ferb/fpt_fosd"],
+        url: Literal["doof-ferb/vlsp2020_vinai_100h", "doof-ferb/fpt_fosd", None] = None,
+        dataset: datasets.Dataset | None = None,
         preprocessor: Callable[[torch.Tensor, int], torch.Tensor] | None = None,
         *,
+        subset_indices: list[int] | None = None,
         split: str = "train",
         **kwargs
     ):
-        if url not in self._SUPPORTED_DATASETS:
-            raise ValueError(f"Unsupported dataset {url}")
+        if url is not None:
+            if url not in self._SUPPORTED_DATASETS:
+                raise ValueError(f"Unsupported dataset {url}")
 
-        self._dataset = load_dataset(url, split=split, **kwargs)
+            self._dataset = datasets.load_dataset(url, split=split, **kwargs)
+            if subset_indices:
+                self._dataset = self._dataset.select(subset_indices)
+        else:
+            self._dataset = dataset
 
         if preprocessor is None:
             preprocessor = lambda wf, _: wf
