@@ -75,23 +75,21 @@ class NoiseAugmentLoader:
             generator=self._generator
         )
         noisy_samples = samples.clone()
+        noise = {"noise_mask": noise_mask}
 
         rir_mask = (noise_mask == 0) | (noise_mask == 2)
-        rir_samples, noisy = self._apply_rir_noise(noisy_samples, rir_mask)
-        noisy_samples[rir_mask] = noisy
+        if rir_mask.sum():
+            noise["rir"], noisy_samples[rir_mask] = self._apply_rir_noise(
+                noisy_samples, rir_mask
+            )
 
         snr_mask = (noise_mask == 1) | (noise_mask == 2)
-        snr_noises, snr_levels, noisy = self._apply_snr_noise(noisy_samples, snr_mask)
-        noisy_samples[snr_mask] = noisy
+        if snr_mask.sum():
+            noise["snr"], noise["snr_levels"], noisy_samples[snr_mask] = self._apply_snr_noise(
+                noisy_samples, snr_mask
+            )
 
-        noise_dict = {
-            "snr": snr_noises,
-            "rir": rir_samples,
-            "noise_mask": noise_mask,
-            "snr_levels": snr_levels
-        }
-
-        return samples, noisy_samples, noise_dict, *other
+        return samples, noisy_samples, noise, *other
 
     def __len__(self):
         return len(self._data_loader)
