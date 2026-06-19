@@ -46,9 +46,9 @@ class AudioDataset(Dataset):
 
     @staticmethod
     def collate_fn(batch: list[torch.Tensor]):
-        # lengths = torch.tensor([sig.shape[-1] for sig in batch])
+        lengths = torch.tensor([sig.shape[-1] for sig in batch])
         padded_signals = torch.nested.nested_tensor(batch).to_padded_tensor(0)
-        return padded_signals
+        return padded_signals, lengths
 
     def __len__(self) -> int:
         return len(self._decoders)
@@ -116,7 +116,7 @@ class SpeechTranscriptDataset:
         audio = [item['audio'] for item in batch]
         transcripts = [item['transcription'] for item in batch]
 
-        return AudioDataset.collate_fn(audio), transcripts
+        return *AudioDataset.collate_fn(audio), transcripts
 
     def __len__(self):
         return len(self._dataset)
@@ -133,12 +133,18 @@ class MSSNSDataset:
         sample_strat: Literal["type", "cate", None] = "type",
         *,
         preprocessor: Callable[[torch.Tensor, int], torch.Tensor] | None = None,
+        split: Literal['train', 'test', None] = None,
         generator: torch.Generator | None = None
     ) -> None:
         if mssnsd_root is None:
             mssnsd_root = f"{_ROOT}/data/MS-SNSD"
+        if split is None:
+            noise_dir = (f"{mssnsd_root}/noise_train", f"{mssnsd_root}/noise_test")
+        elif split in ('train', 'test'):
+            noise_dir = (f"{mssnsd_root}/noise_{split}",)
+        else:
+            raise ValueError(f"Unknown split '{split}'")
 
-        noise_dir = (f"{mssnsd_root}/noise_train", f"{mssnsd_root}/noise_test")
         files = ([f"{dir}/{file}" for file in os.listdir(dir)] for dir in noise_dir)
         audio_files = _filter_audio_files(sum(files, start = []))
 
@@ -216,8 +222,17 @@ class FLAIRDataset:
         flair_mat: str | None = None,
         preprocessor: Callable[[torch.Tensor, int], torch.Tensor] | None = None,
         *,
-        generator: torch.Generator | None = None
+        generator: torch.Generator | None = None,
+        _rir_samples: torch.Tensor | None = None,
+        _sample_rate: int | None = None
     ) -> None:
+        self._preprocessor = preprocessor if preprocessor else lambda wf, _: wf
+        self._generator = generator
+
+        if _rir_samples is not None and _sample_rate is not None:
+            self._rirs, self._sample_rate = _rir_samples, _sample_rate
+            return
+
         if flair_mat is None:
             flair_mat = f"{_ROOT}/data/data_FLAIR.mat"
 
@@ -226,11 +241,30 @@ class FLAIRDataset:
         self._sample_rate = data["fs"][0, 0]
         self._rirs = torch.tensor(data["rirs"].transpose([1, 2, 0])).mean(dim=1, keepdim=True)
 
-        self._preprocessor = preprocessor if preprocessor else lambda wf, _: wf
-        self._generator = generator
+    def train_test_split(self, test_size: float, seed: int | None = None):
+        if seed is not None:
+            gen = torch.Generator()
+            gen.manual_seed(seed)
+        else:
+            gen = None
 
-    def __len__(self) -> int:
-        return self._rirs.shape[0]
+        total_len = len(self)
+        num_train = total_len - int(test_size * total_len)
+        shuffled_indices = torch.randperm(total_len, generator=gen)
+        return {
+            'train': FLAIRDataset(
+                preprocessor=self._preprocessor,
+                generator=self._generator,
+                _rir_samples=self._rirs[shuffled_indices[:num_train]],
+                _sample_rate=self._sample_rate
+            ),
+            'test': FLAIRDataset(
+                preprocessor=self._preprocessor,
+                generator=self._generator,
+                _rir_samples=self._rirs[shuffled_indices[num_train:]],
+                _sample_rate=self._sample_rate
+            )
+        }
 
     def get_samples(self, num_samples: int):
         sample_indices = torch.randint(
@@ -240,3 +274,6 @@ class FLAIRDataset:
         )
 
         return self._preprocessor(self._rirs[sample_indices], self._sample_rate)
+
+    def __len__(self) -> int:
+        return self._rirs.shape[0]
