@@ -26,6 +26,7 @@ class AudioDataset(Dataset):
         self,
         files: list[str],
         preprocessor: Callable[[torch.Tensor, int], torch.Tensor] | None = None,
+        mono: bool = True,
         *,
         sample_rate: int | None = None,
         pad_max: bool = False
@@ -33,6 +34,7 @@ class AudioDataset(Dataset):
         super().__init__()
 
         self._preprocessor = preprocessor if preprocessor else lambda wf, _: wf
+        self._mono = mono
 
         self._decoders = [
             AudioDecoder(file, sample_rate=sample_rate)
@@ -56,6 +58,8 @@ class AudioDataset(Dataset):
     def __getitem__(self, index: int) -> torch.Tensor:
         if self._cache[index] is None:
             waveform = self._decoders[index].get_all_samples().data
+            if self._mono:
+                waveform = waveform.mean(dim=0)
             if self._max_len and waveform.shape[-1] < self._max_len:
                 waveform = torch.nn.functional.pad(
                     waveform,
@@ -80,6 +84,7 @@ class SpeechTranscriptDataset:
         url: Literal["doof-ferb/vlsp2020_vinai_100h", "doof-ferb/fpt_fosd", None] = None,
         dataset: datasets.Dataset | None = None,
         preprocessor: Callable[[torch.Tensor, int], torch.Tensor] | None = None,
+        mono: bool = True,
         *,
         subset_indices: list[int] | None = None,
         split: str = "train",
@@ -102,7 +107,8 @@ class SpeechTranscriptDataset:
             return {
                 "audio": [
                     preprocessor(
-                        decoder.get_all_samples().data,
+                        decoder.get_all_samples().data.mean(dim=0)
+                            if mono else decoder.get_all_samples().data,
                         decoder.metadata.sample_rate
                     )
                     for decoder in batch['audio']
@@ -132,6 +138,7 @@ class MSSNSDataset:
         mssnsd_root: str | None = None,
         sample_strat: Literal["type", "cate", None] = "type",
         *,
+        mono: bool = True,
         preprocessor: Callable[[torch.Tensor, int], torch.Tensor] | None = None,
         split: Literal['train', 'test', None] = None,
         generator: torch.Generator | None = None
@@ -148,7 +155,7 @@ class MSSNSDataset:
         files = ([f"{dir}/{file}" for file in os.listdir(dir)] for dir in noise_dir)
         audio_files = _filter_audio_files(sum(files, start = []))
 
-        self._dataset = AudioDataset(audio_files, preprocessor)
+        self._dataset = AudioDataset(audio_files, preprocessor, mono)
         self._noise_weights = self._create_nosie_weights(audio_files, sample_strat)
 
         self._snr_levels = torch.tensor(snr_levels)
@@ -222,6 +229,7 @@ class FLAIRDataset:
         flair_mat: str | None = None,
         preprocessor: Callable[[torch.Tensor, int], torch.Tensor] | None = None,
         *,
+        mono: bool = True,
         generator: torch.Generator | None = None,
         _rir_samples: torch.Tensor | None = None,
         _sample_rate: int | None = None
@@ -239,7 +247,10 @@ class FLAIRDataset:
         data = scio.loadmat(flair_mat)
 
         self._sample_rate = data["fs"][0, 0]
-        self._rirs = torch.tensor(data["rirs"].transpose([1, 2, 0])).mean(dim=1, keepdim=True)
+        self._rirs = torch.tensor(data["rirs"].transpose([1, 2, 0])).mean(
+            dim=1,
+            keepdim=not mono
+        )
 
     def train_test_split(self, test_size: float, seed: int | None = None):
         if seed is not None:
