@@ -7,11 +7,12 @@ import torch
 from torch.utils.data import Dataset
 from torchcodec.decoders import AudioDecoder
 
+from . import _ROOT
+
 from typing import Callable, Literal
 
 
 _SUPPORTED_EXTS = (".wav", ".ogg", ".mp3")
-_ROOT = os.path.dirname(os.path.abspath(__file__)) + "/../.."
 
 
 def _filter_audio_files(files: list[str]):
