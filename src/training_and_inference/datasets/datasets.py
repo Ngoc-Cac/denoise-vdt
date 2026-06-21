@@ -7,7 +7,7 @@ import torch
 from torch.utils.data import Dataset
 from torchcodec.decoders import AudioDecoder
 
-from . import _ROOT
+from .. import _ROOT
 
 from typing import Callable, Literal
 

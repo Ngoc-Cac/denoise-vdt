@@ -4,7 +4,7 @@ import torch
 from torch.utils.data import DataLoader
 from torchaudio import functional as F
 from transformers import AutoModel
-from safetensors import load_file
+from safetensors.torch import load_file
 
 from . import _ROOT
 from .datasets.data_loader import NoiseAugmentLoader
@@ -121,7 +121,7 @@ def load_dasheng(
         for layer in freeze_layers:
             layer.requires_grad_(False)
 
-    if load_from_checkpoint:
+    if denoiser_ckpt:
         model.second_encoder.load_state_dict(load_file(denoiser_ckpt))
 
     return model

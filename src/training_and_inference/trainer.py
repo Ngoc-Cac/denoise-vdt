@@ -3,7 +3,7 @@ import torch.nn as nn
 
 from transformers import Trainer, PreTrainedModel
 
-from .data_loader import NoiseAugmentLoader
+from .datasets import NoiseAugmentLoader
 
 
 class DenoiserTrainer(Trainer):
