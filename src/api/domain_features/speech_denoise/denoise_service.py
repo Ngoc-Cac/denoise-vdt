@@ -1,24 +1,21 @@
 import torch
 
-from torchcodec.decoders import AudioDecoder
-
+from ..preprocessing.preprocessing_service import PreprocessingService
 from ...logger import get_logger
 
 logger = get_logger(__name__)
 
 
 class DenoiseService:
-    def __init__(self, model):
+    def __init__(self, model, preprocessor: PreprocessingService):
         self._model = model
-        logger.debug("Initialised template service")
+        self._preprocessor = preprocessor
+        logger.debug("Initialised denoising service")
 
+    @torch.no_grad()
     def denoise_audio(self, file):
-        decoder = AudioDecoder(file)
-
-        samples = decoder.get_all_samples()
-        sr = samples.sample_rate
-
-        with torch.no_grad():
-            denoised, output_sr = self._model(samples.data, sr)
-
-        return denoised.cpu(), output_sr
+        audio_chunks = [
+            self._model(audio_chunk).cpu()
+            for audio_chunk, _ in self._preprocessor.load_file(file)
+        ]
+        return torch.concat(audio_chunks, dim=-1), 16000

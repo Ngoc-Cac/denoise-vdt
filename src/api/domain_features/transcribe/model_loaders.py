@@ -11,12 +11,9 @@ from transformers import (
 
 def _load_wav2vec2vn(path, device):
     processor = Wav2Vec2Processor.from_pretrained(path)
-    model = Wav2Vec2ForCTC.from_pretrained(
-        path
-    ).eval().to(device)
+    model = Wav2Vec2ForCTC.from_pretrained(path).eval().to(device)
 
-    def transcribe(wav, sr):
-        wav = F.resample(wav, sr, 16000)
+    def transcribe(wav):
         input_values = processor(wav, sampling_rate=16000, return_tensors="pt").input_values
         logits = model(input_values.to(device)).logits
         pred_ids = torch.argmax(logits, dim=-1)
@@ -39,8 +36,7 @@ def load_PhoWhisper_model(device):
         device=device,
     )
 
-    def transcribe(wav, sr):
-        wav = F.resample(wav, sr, 16000)
+    def transcribe(wav):
         return pipe(wav)['text']
     return transcribe
 

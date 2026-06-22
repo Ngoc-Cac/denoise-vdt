@@ -2,6 +2,7 @@ import torch
 
 from torchcodec.decoders import AudioDecoder
 
+from ..preprocessing.preprocessing_service import PreprocessingService
 from ...logger import get_logger
 
 logger = get_logger(__name__)
@@ -9,7 +10,12 @@ logger = get_logger(__name__)
 
 class TranscribeService:
     """Service for transcribing speech."""
-    def __init__(self, transcriber, need_input_file: bool = False):
+    def __init__(
+        self,
+        transcriber,
+        preprocessor,
+        need_input_file: bool = False,
+    ):
         """
         Initialise TranscribeService.
 
@@ -21,18 +27,18 @@ class TranscribeService:
             with input files instead of raw samples.
         """
         self._transcriber = transcriber
+        self._preprocessor = preprocessor
         self._need_input_file = need_input_file
 
-        logger.debug("Initialised template service")
+        logger.debug("Initialised transcribing service")
 
+    @torch.no_grad()
     def transcribe(self, file):
         if self._need_input_file:
-            inputs = (file,)
+            return self._transcriber(file)
         else:
-            decoder = AudioDecoder(file)
-
-            samples = decoder.get_all_samples()
-            inputs = samples.data.mean(dim=0), samples.sample_rate
-
-        with torch.no_grad():
-            return self._transcriber(*inputs)
+            audio_chunks = [
+                self._transcriber(audio_chunk).cpu()
+                for audio_chunk, _ in self._preprocessor.load_file(file)
+            ]
+            return torch.concat(audio_chunks, dim=-1), 16000
