@@ -3,7 +3,7 @@ import torch
 
 from torch.utils.data import DataLoader
 from torchaudio import functional as F
-from transformers import AutoModel
+from transformers import AutoModel, Wav2Vec2Processor, Wav2Vec2ForCTC
 from safetensors.torch import load_file
 
 from . import _ROOT
@@ -125,3 +125,16 @@ def load_dasheng(
         model.second_encoder.load_state_dict(load_file(denoiser_ckpt))
 
     return model
+
+
+def load_wav2vec2(
+    ckpt: str = "nguyenvulebinh/wav2vec2-base-vietnamese-250h",
+    freeze_model: bool = True,
+):
+    processor = Wav2Vec2Processor.from_pretrained(ckpt)
+    model = Wav2Vec2ForCTC.from_pretrained(ckpt)
+
+    if freeze_model:
+        model = model.requires_grad_(False)
+
+    return processor, model

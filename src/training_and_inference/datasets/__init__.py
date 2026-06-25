@@ -1,4 +1,5 @@
 from .datasets import (
+    AudioDataset,
     MSSNSDataset,
     FLAIRDataset,
     SpeechTranscriptDataset
