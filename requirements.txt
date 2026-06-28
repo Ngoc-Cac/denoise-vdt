@@ -15,9 +15,12 @@ torch
 torchaudio
 torchvision
 torchcodec
+torchmetrics
 
-transformers
+bitsandbytes
+transformers[torch]
 underthesea
+librosa
 
 datasets
 
