@@ -130,6 +130,7 @@ def load_dasheng(
 def load_wav2vec2(
     ckpt: str = "nguyenvulebinh/wav2vec2-base-vietnamese-250h",
     freeze_model: bool = True,
+    return_loss_fn: bool = True
 ):
     processor = Wav2Vec2Processor.from_pretrained(ckpt)
     model = Wav2Vec2ForCTC.from_pretrained(ckpt)
@@ -137,4 +138,21 @@ def load_wav2vec2(
     if freeze_model:
         model = model.requires_grad_(False)
 
-    return processor, model
+    outs = [processor, model]
+    if return_loss_fn:
+        def loss_fn(batch, transcripts):
+            # manually do what most Wav2Vec2Processor does
+            mu, std = batch.mean(dim=-1, keepdim=True), batch.std(dim=-1, keepdim=True)
+
+            clean_labels = processor(
+                text=transcripts,
+                padding=True,
+                return_tensors="pt"
+            ).input_ids
+            # padded tokens is 109, but model uses -100 as ignored tokens.
+            clean_labels[clean_labels == 109] = -100
+            return model((batch - mu) / std, labels=clean_labels).loss
+
+        outs.append(loss_fn)
+
+    return tuple(outs)
