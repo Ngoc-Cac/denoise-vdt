@@ -1,7 +1,4 @@
-import logging
-import logging.config
 import sys
-from os import environ
 
 from flask import Flask, jsonify
 from flask_cors import CORS
@@ -91,6 +88,5 @@ def create_app(modules=None):
     cors.init_app(app)
 
     logger.info("API has fully started!")
-    # logger.debug("Current env %s", environ)
 
     return app
