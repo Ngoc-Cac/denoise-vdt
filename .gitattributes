@@ -1,3 +1,4 @@
 data/**/*.zip filter=lfs diff=lfs merge=lfs -text
 data/**/*.parquet filter=lfs diff=lfs merge=lfs -text
 data/**/*.mat filter=lfs diff=lfs merge=lfs -text
+data/dasheng-ckpts/* filter=lfs diff=lfs merge=lfs -text
