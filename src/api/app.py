@@ -10,14 +10,16 @@ from flask_restful import output_json, Api
 from werkzeug.exceptions import default_exceptions, HTTPException
 
 from .core_features.exception.request import ValidationError
-from .core_features.infrastructure import AppModule, ModelModule
+from .core_features.infrastructure import AppModule, SharedServiceModule
 
 from .domain_features import (
     HealthResource,
     DenoiseResource,
     TranscribeResource,
+    ModelPoolResource
 )
 
+import logging
 from .logger import get_logger
 
 logger = get_logger(__name__)
@@ -58,6 +60,7 @@ def _setup_api(app: Flask):
     api.add_resource(HealthResource, "/health", "/api/v1/health")
     api.add_resource(DenoiseResource, "/denoise", "/api/v1/denoise")
     api.add_resource(TranscribeResource, "/transcribe", "/api/v1/transcribe")
+    api.add_resource(ModelPoolResource, "/models", "/api/v1/models")
 
     return api
 
@@ -80,10 +83,7 @@ def create_app(modules=None):
     logger.info("API Configured")
 
     if not modules:
-        modules = [
-            AppModule(),
-            ModelModule(),
-        ]
+        modules = [AppModule(), SharedServiceModule()]
 
     app.injector = FlaskInjector(app=app, modules=modules).injector
 

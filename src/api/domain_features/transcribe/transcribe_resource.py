@@ -28,6 +28,14 @@ class TranscribeResource(Resource):
             required=True,
             help='Audio file is required'
         )
+        self.reqparse.add_argument(
+            'models',
+            type=str,
+            location='form',
+            action='append',
+            required=False,
+            default=['ChunkFormer']
+        )
 
     def _save_file(self, file):
         tmp_dir = tempfile.gettempdir()
@@ -46,8 +54,10 @@ class TranscribeResource(Resource):
 
         try:
             filepath = self._save_file(args['audio'])
-
-            return {"transcript": self.service.transcribe(filepath)}, 200
+            transcripts = self.service.transcribe(
+                filepath, args['models']
+            )
+            return transcripts, 200
         except Exception as e:
             logger.error(f"Error: {e}", exc_info=True)
             return {"success": False, "error": str(e)}, 500

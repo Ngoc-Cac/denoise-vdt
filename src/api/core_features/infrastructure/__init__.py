@@ -1,2 +1,2 @@
 from .app import AppModule
-from .models import ModelModule
+from .shared_services import SharedServiceModule
