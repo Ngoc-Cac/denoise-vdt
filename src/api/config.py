@@ -1,7 +1,9 @@
 import os
+from pathlib import Path
+
 
 STATIC_CONFIG = {
-    # static spec for api
+    "CKPT_DIR": Path(__file__).resolve().parent.parent.parent / 'data/dasheng-ckpts/'
 }
 
 
