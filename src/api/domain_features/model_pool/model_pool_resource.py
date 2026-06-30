@@ -8,6 +8,19 @@ logger = get_logger(__name__)
 
 
 class ModelPoolResource(Resource):
+    """
+    Resource for hosting the model pool service.
+
+    Available methods:
+
+    - `GET`: Get the current state of the model pool. Should return:
+        - `loaded_denoiser`: Name of the loaded denoising model.
+        - `denoising_models`: Names of supported denoising model.
+        - `stt_models`: Names of supported speech-to-text model.
+
+    - `POST`: Load a checkpoint for the denoising model:
+        - `ckpt_name`: Name of the checkpoint to load.
+    """
     @inject
     def __init__(self, model_pool_service: ModelPoolService):
         self.service = model_pool_service

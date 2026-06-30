@@ -17,7 +17,14 @@ logger = get_logger(__name__)
 
 
 class DenoiseResource(Resource):
-    """Resource for hosting the denoising endpoint."""
+    """
+    Resource for hosting the denoising endpoint.
+
+    Available methods:
+
+    - `POST`: Upload audio file for denoising, with argument:
+        - `audio`: The audio file to denoise.
+    """
     @inject
     def __init__(self, denoise_service: DenoiseService):
         self.service = denoise_service
@@ -57,6 +64,8 @@ class DenoiseResource(Resource):
         filepath = self._save_file(args['audio'])
 
         denoised, sr = self.service.denoise_audio(filepath)
+
+        logger.info(f"File {filepath} denoised. Sending denoised file...")
         return send_file(
             self._audio_to_bytes(denoised, sr),
             "audio/wav",

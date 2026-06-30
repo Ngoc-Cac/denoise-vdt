@@ -21,8 +21,10 @@ class DenoiseService:
         logger.debug("Initialised denoising service")
 
     @torch.no_grad()
-    def denoise_audio(self, file):
+    def denoise_audio(self, file: str):
         denoiser = self._model_pool.get_denoiser()
+
+        logger.info(f"Denoising file {file}")
 
         audio_chunks = [
             denoiser(audio_chunk).cpu()

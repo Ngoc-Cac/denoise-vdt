@@ -63,6 +63,9 @@ class TranscribeResource(Resource):
         args = self.reqparse.parse_args()
 
         filepath = self._save_file(args['audio'])
-        return self.service.transcribe(
+        res = self.service.transcribe(
             filepath, args['models']
-        ), 200
+        )
+
+        logger.info("Transcribing finished. Sending results...")
+        return res, 200
