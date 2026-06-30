@@ -41,3 +41,17 @@ submodule:
 # The MS-SNSD is very large so it will take some time.
 git submodule update --init --recursive
 ```
+
+1. Specify the fine-tuning configuration in `config.yml`.
+
+2. Run train script:
+```bash
+python train.py
+```
+
+3. (Optional) View the progress with Tensorboard:
+```bash
+# In a different shell session
+# output_dir should be the same directory in config.yml
+tensorboard --logidr output_dir
+```

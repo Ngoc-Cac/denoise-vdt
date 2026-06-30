@@ -58,7 +58,7 @@ class DenoiserTrainer(Trainer):
         outputs = denoised_embeds = model(noisy_embeds)
         loss = self._loss_fn(denoised_embeds, clean_embeds)
 
-        if (decode_audio and self._audio_decoder) or self._downstream_loss_factor:
+        if (decode_audio and self._audio_decoder) or self._downstream_loss_fn:
             outputs = denoised = self._audio_decoder(denoised_embeds)
 
         if self._downstream_loss_fn:

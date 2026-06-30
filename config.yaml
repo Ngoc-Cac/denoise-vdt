@@ -6,11 +6,16 @@ test_batch_size: 16
 train-test-ratio: .8
 save_test_loader: true
 
+# Whether or not to use wav2vec2 model as downstream loss.
+# This will compute the CTC loss and add it to the original MSE loss:
+# mse_loss + downstream_loss_factor * ctc_loss
 use_downstream_loss: false
 downstream_loss_factor: .01
 
+# Whether or not to compute WER using wav2vec2 model during evaluation
 compute_wer: false
 
+# Arguments passed to transformers.Trainer class
 trainer-args:
   output_dir: outputs
   num_train_epochs: 150
