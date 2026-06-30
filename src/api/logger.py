@@ -32,7 +32,7 @@ def setup_rotating_handler(
     return handler
 
 
-def get_logger(name, fmt=None, log_dir=None):
+def get_logger(name, fmt=None, log_dir='logs'):
     logging.config.dictConfig({
         "version": 1,
         "disable_existing_loggers": False,

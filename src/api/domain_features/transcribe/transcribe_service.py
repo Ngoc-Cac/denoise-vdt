@@ -1,3 +1,4 @@
+import time
 import torch
 
 from injector import inject
@@ -62,10 +63,19 @@ class TranscribeService:
         :rtype: str
         """
         logger.info(f"Transcribing file {file}")
-        return {
+
+        start = time.perf_counter_ns()
+        res = {
             name: self._transcribe(file, *tools)
             for tools, name in zip(
                 self._model_pool.get_transcriber(model_names),
                 model_names
             )
         }
+        end = time.perf_counter_ns() - start
+
+        logger.info(
+            f"Transcribed {file} with {len(model_names)} models"
+            f" within {end / 1e6:.3f} ms"
+        )
+        return res

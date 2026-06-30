@@ -64,7 +64,7 @@ def _setup_api(app: Flask):
     return api
 
 
-def create_app(modules=None, log_dir=None):
+def create_app(modules=None, log_dir='logs'):
     logger.info("Creating application")
 
     app = Flask(__name__)
