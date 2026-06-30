@@ -53,6 +53,7 @@ def _setup_json_error_handling(app: Flask):
 def _setup_api(app: Flask):
     api = Api(app, catch_all_404s=True)
     api.representation({"application/json": output_json})
+
     # API routes
     api.add_resource(HealthResource, "/health", "/api/v1/health")
     api.add_resource(DenoiseResource, "/denoise", "/api/v1/denoise")
