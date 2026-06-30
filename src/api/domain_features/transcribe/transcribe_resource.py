@@ -7,6 +7,8 @@ from werkzeug.datastructures import FileStorage
 from werkzeug.utils import secure_filename
 
 from .transcribe_service import TranscribeService
+from ...config import Config
+
 from ...logger import get_logger
 
 logger = get_logger(__name__)
@@ -14,11 +16,19 @@ logger = get_logger(__name__)
 
 class TranscribeResource(Resource):
     """
-    Resource for hosting the transcription endpoint
+    Resource for hosting the transcription endpoint.
+
+    Available methods:
+
+    - `POST`: Upload audio file for transcribing, with arguments:
+        - `audio`: File to transcribe. This is required.
+        - `models`: The model(s) to use for transcribing. This should be a
+        name given by the `ModelPoolService`. See that service for more
+        information.
     """
     @inject
-    def __init__(self, template_service: TranscribeService):
-        self.service = template_service
+    def __init__(self, transcribe_service: TranscribeService, config: Config):
+        self.service = transcribe_service
 
         self.reqparse = reqparse.RequestParser()
         self.reqparse.add_argument(
@@ -34,7 +44,7 @@ class TranscribeResource(Resource):
             location='form',
             action='append',
             required=False,
-            default=['ChunkFormer']
+            default=[config["DEFAULT_STT"]]
         )
 
     def _save_file(self, file):
@@ -52,12 +62,7 @@ class TranscribeResource(Resource):
     def post(self):
         args = self.reqparse.parse_args()
 
-        try:
-            filepath = self._save_file(args['audio'])
-            transcripts = self.service.transcribe(
-                filepath, args['models']
-            )
-            return transcripts, 200
-        except Exception as e:
-            logger.error(f"Error: {e}", exc_info=True)
-            return {"success": False, "error": str(e)}, 500
+        filepath = self._save_file(args['audio'])
+        return self.service.transcribe(
+            filepath, args['models']
+        ), 200

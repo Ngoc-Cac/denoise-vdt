@@ -54,15 +54,11 @@ class DenoiseResource(Resource):
     def post(self):
         args = self.reqparse.parse_args()
 
-        try:
-            filepath = self._save_file(args['audio'])
+        filepath = self._save_file(args['audio'])
 
-            denoised, sr = self.service.denoise_audio(filepath)
-            return send_file(
-                self._audio_to_bytes(denoised, sr),
-                "audio/wav",
-                download_name="cleaned.wav"
-            )
-        except Exception as e:
-            logger.error(f"Error: {e}", exc_info=True)
-            return {"success": False, "error": str(e)}, 500
+        denoised, sr = self.service.denoise_audio(filepath)
+        return send_file(
+            self._audio_to_bytes(denoised, sr),
+            "audio/wav",
+            download_name="cleaned.wav"
+        )

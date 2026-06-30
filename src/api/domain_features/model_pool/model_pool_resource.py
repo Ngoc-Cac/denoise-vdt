@@ -28,16 +28,11 @@ class ModelPoolResource(Resource):
         args = self.reqparse.parse_args()
         ckpt_name = args['ckpt_name']
 
-        try:
-            loaded = self.service.load_denoising_ckpt(ckpt_name)
-
-            return (
-                {"message": f"Loaded checkpoint {ckpt_name} successfully!"},
-                200,
-            ) if loaded else (
-                {"message": f"Checkpoint {ckpt_name} could not be loaded"},
-                422
-            )
-        except Exception as e:
-            logger.error(f"Error: {e}", exc_info=True)
-            return {"success": False, "error": str(e)}, 500
+        loaded = self.service.load_denoising_ckpt(ckpt_name)
+        return (
+            {"message": f"Loaded checkpoint {ckpt_name} successfully!"},
+            200
+        ) if loaded else (
+            {"message": f"Checkpoint {ckpt_name} could not be loaded"},
+            422
+        )
