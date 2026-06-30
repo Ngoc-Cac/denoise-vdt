@@ -5,8 +5,11 @@
   margin-bottom: 20px;
 }
 
-#transcript-box textarea {
+div.transcript-box textarea {
   font-size: 16px !important;
+  height: 100% !important;
+  overflow-y: auto !important;
+  resize: vertical;
 }
 
 .down-page-container {

@@ -59,10 +59,7 @@ with gr.Blocks(title="Speech Denoising Demonstration") as app:
         with open("src/web_ui/down_page.html") as file:
             gr.HTML(file.read())
 
-    app.load(
-        fn=checkhealth,
-        outputs=good_health
-    ).then(
+    app.load(fn=checkhealth, outputs=good_health).then(
         fn=render_page,
         inputs=good_health,
         outputs=[main_page, down_page]

@@ -64,16 +64,16 @@ class OutputBlock:
                 label=orig_label,
                 placeholder=orig_placeholder,
                 interactive=False,
-                lines=4,
-                elem_id="transcript-box"
+                lines=5,
+                elem_classes=["transcript-box"]
             )
             gr.Textbox(
                 denoised_value,
                 label=denoised_label,
                 placeholder=denoised_placeholder,
                 interactive=False,
-                lines=4,
-                elem_id="transcript-box"
+                lines=5,
+                elem_classes=["transcript-box"]
             )
 
     def render_transcription_tabs(self, orig_dict, denoised_dict):
