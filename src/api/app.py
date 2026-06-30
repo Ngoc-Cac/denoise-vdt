@@ -1,3 +1,4 @@
+import os
 import sys
 
 from flask import Flask, jsonify
@@ -17,7 +18,7 @@ from .domain_features import (
 )
 
 import logging
-from .logger import get_logger
+from .logger import get_logger, setup_rotating_handler
 
 logger = get_logger(__name__)
 
@@ -63,7 +64,7 @@ def _setup_api(app: Flask):
     return api
 
 
-def create_app(modules=None):
+def create_app(modules=None, log_dir=None):
     logger.info("Creating application")
 
     app = Flask(__name__)
@@ -73,6 +74,11 @@ def create_app(modules=None):
     with app.app_context():
         app.logger.addHandler(logging.StreamHandler(stream=sys.stdout))
         app.logger.setLevel(logging.DEBUG)
+        if log_dir:
+            if not os.path.exists(log_dir):
+                os.mkdir(log_dir)
+            handler = setup_rotating_handler(f"{log_dir}/debug.log")
+            app.logger.addHandler(handler)
 
     app = _setup_json_error_handling(app)
 
